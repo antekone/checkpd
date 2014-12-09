@@ -72,7 +72,7 @@ fn calculate_pd(filenames: Vec<String>, resume_from: u64) {
         return;
     }
 
-	mut readers: Vec<BufferedReader<File>> = Vec::new();
+    mut readers: Vec<BufferedReader<File>> = Vec::new();
     println!("Opening {} streams.", filenames.len());
     for fname in filenames.iter() {
         let mut file = match File::open(&Path::new(fname)) {
