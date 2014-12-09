@@ -1,71 +1,39 @@
 extern crate getopts;
+extern crate serialize;
+extern crate docopt;
 
-use getopts::{optmulti,optflag,getopts,optopt};
-use std::os;
+use docopt::Docopt;
 use std::io::{BufferedReader,File};
-use std::num::from_str_radix;
 use std::slice::bytes::MutableByteVector;
 
-fn syntax_error(pname: &str, f: getopts::Fail_) {
-    println!("Syntax error in arguments.");
-    println!("{}", f);
-    syntax(pname);
-}
+static USAGE: &'static str = "
+Usage: xorfile [options] [-n NAME ...]
 
-fn syntax(pname: &str) {
-    println!("Syntax:");
-    println!("");
-    println!("    {} <options...>", pname);
-    println!("");
-    println!("Options:");
-    println!("");
-    println!("    -h        this screen");
-    println!("    -r SECTOR resume from sector SECTOR");
-    println!("    -n NAME   filename to read. can occur multiple times.");
-    println!("");
-    println!("Example:");
-    println!("");
-    println!("    {} -n file1.bin -n file2.bin -n file3.bin -r 512", pname);
-    println!("");
-    println!("    This will check if PD of selected files is the same. Start from sector 512.");
+Options:
+    -h, --help                  Show this helpful screen
+    -r SECTOR, --resume SECTOR  Resume from this sector
+    -n NAME, --name NAME        Filename to read. Can (should) occur multiple times.
+
+Example:
+
+    xorfile -n file1.bin -n file2.bin -n file3.bin -r 512
+
+    This will check if PD of selected files is the same. Starts from sector 512.
+";
+
+#[deriving(Decodable)]
+struct Args {
+    flag_name: Vec<String>,
+    flag_resume: Option<u64>,
 }
 
 fn main() {
-    let args = os::args();
-    let program = args[0].as_slice();
-    let args = args.tail();
+    let args: Args = Docopt::new(USAGE).and_then(|dopt| dopt.decode()).unwrap_or_else(|e| e.exit());
 
-    let opts = [
-        optmulti("n", "name", "filename", "FILE"),
-        optopt("r", "resume", "resume sector number", "SECTOR"),
-        optflag("h", "help", "this screen"),
-    ];
-
-    let matches = match getopts(args, &opts) {
-        Ok(m) => m,
-        Err(f) => {
-            syntax_error(program, f);
-            return;
-        }
-    };
-
-    if matches.opt_present("h") {
-        syntax(program);
-        return;
-    }
-
-    let resume_sector = if matches.opt_present("r") {
-        let argstr: String = matches.opt_str("r").unwrap_or("0".to_string());
-        let num: u64 = std::num::from_str_radix(argstr.as_slice(), 10).unwrap_or(0);
-        num
-    } else {
-        0
-    };
-
+    let resume_sector = args.flag_resume.unwrap_or(0);
     println!("Resuming from sector {}.", resume_sector);
 
-    let files = matches.opt_strs("n");
-    calculate_pd(files, resume_sector);
+    calculate_pd(args.flag_name, resume_sector);
 }
 
 fn calculate_pd(filenames: Vec<String>, resume_from: u64) {
