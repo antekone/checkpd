@@ -54,7 +54,7 @@ fn main() {
     let resume_sector = match matches.opt_present("r") {
         true => {
             let argstr: String = matches.opt_str("r").unwrap_or("0".to_string());
-            let num: u64 = std::num::from_str_radix(matches.opt_str("r").unwrap().as_slice(), 10).unwrap_or(0);
+            let num: u64 = std::num::from_str_radix(argstr.as_slice(), 10).unwrap_or(0);
             num
         },
         false => 0,
