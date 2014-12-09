@@ -1,5 +1,3 @@
-getopts;
-
 use getopts::{optmulti,optflag,getopts,optopt};
 use std::os;
 use std::io::{BufferedReader,File};
