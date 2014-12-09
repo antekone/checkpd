@@ -1,7 +1,10 @@
+extern crate getopts;
+
 use getopts::{optmulti,optflag,getopts,optopt};
 use std::os;
 use std::io::{BufferedReader,File};
 use std::num::from_str_radix;
+use std::slice::bytes::MutableByteVector;
 
 fn syntax_error(pname: &str, f: getopts::Fail_) {
     println!("Syntax error in arguments.");
@@ -51,13 +54,12 @@ fn main() {
         return;
     }
 
-    let resume_sector = match matches.opt_present("r") {
-        true => {
-            let argstr: String = matches.opt_str("r").unwrap_or("0".to_string());
-            let num: u64 = std::num::from_str_radix(argstr.as_slice(), 10).unwrap_or(0);
-            num
-        },
-        false => 0,
+    let resume_sector = if matches.opt_present("r") {
+        let argstr: String = matches.opt_str("r").unwrap_or("0".to_string());
+        let num: u64 = std::num::from_str_radix(argstr.as_slice(), 10).unwrap_or(0);
+        num
+    } else {
+        0
     };
 
     println!("Resuming from sector {}.", resume_sector);
@@ -84,7 +86,14 @@ fn calculate_pd(filenames: Vec<String>, resume_from: u64) {
             }
         };
 
-        file.seek(512 * resume_from as i64, std::io::SeekStyle::SeekSet);
+        match file.seek(512 * resume_from as i64, std::io::SeekStyle::SeekSet) {
+            Ok(_) => {}
+            Err(f) => {
+                println!("I/O error during resuming: {}", f);
+                return;
+            }
+        };
+
         readers.push(BufferedReader::new(file));
     }
 
@@ -94,17 +103,15 @@ fn calculate_pd(filenames: Vec<String>, resume_from: u64) {
     let mut xorbuf = box [0, ..BUF_SIZE];
     let mut buf = box [0, ..BUF_SIZE];
 
-    while true {
-        for i in range(0, BUF_SIZE) {
-            xorbuf[i] = 0;
-        }
+    loop {
+        xorbuf.as_mut_slice().set_memory(0);
 
         for i in range(0, filenames.len()) {
             let mut rd = &mut readers[i];
 
             let read = match rd.read(buf.as_mut_slice()) {
-                Ok(read) => read,
-                Err(f) => {
+                Ok(read) if read == BUF_SIZE => read,
+                _ => {
                     println!("I/O error when reading. End of file?");
                     return;
                 }
