@@ -1,4 +1,3 @@
-extern crate getopts;
 extern crate serialize;
 extern crate docopt;
 
